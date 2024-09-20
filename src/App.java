@@ -20,6 +20,7 @@ public class App {
         // System.out.println(spaceInvaders);
         frame.add(spaceInvaders);
         frame.pack();
+        spaceInvaders.requestFocus();
         frame.setVisible(true);
     }
 }
