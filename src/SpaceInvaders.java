@@ -78,6 +78,8 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
 
   //
   Timer gameLoop;
+  int score = 0; 
+  boolean gameOver = false;
  
 
   //constructor to instantiate the  JPanel
@@ -131,14 +133,27 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
       }
     }
     //draw bullets
-    g.setColor(Color.white);
+    g.setColor(Color.red);
     for (int i =0; i< bulletArray.size(); i++){
       Block bullet = bulletArray.get(i);
 
       //check if the bullet is not used, draw the bullet
       if(!bullet.used){
         g.drawRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        //g.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       }
+    }
+
+    //score
+    g.setColor(Color.green);
+    g.setFont(new Font("Arial", Font.PLAIN, 32));
+    
+    //draw the game over
+    if(gameOver){
+      g.drawString("Game Over: " + String.valueOf(score) , 10, 35);
+    }
+    else {
+      g.drawString(String.valueOf(score), 10, 35); 
     }
   }
 
@@ -162,6 +177,11 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             alienArray.get(j).y += alienHeight;
           }
         }
+
+        //check if the ship is touched to end game
+        if (alien.y >= ship.y){
+          gameOver = true;
+        }
       }
     }
 
@@ -169,6 +189,46 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     for(int i = 0; i<bulletArray.size(); i++){
       Block bullet = bulletArray.get(i);
       bullet.y += bulletVelocityY;
+
+      // check for bullet collision with aliens
+      for (int j =0; j< alienArray.size(); j++){
+        Block alien = alienArray.get(j);
+        if(!bullet.used && alien.alive && detectCollision(bullet,alien)){
+          bullet.used = true;
+          alien.alive = false;
+          alienCount--;
+          score += 100; //create a score for each alien shot
+          //break out of the loop to prevent further collision
+          break;
+        }
+      }
+    }
+    //clear bullets
+    //change arrry list to a linked list
+    while (bulletArray.size()> 0 && (bulletArray.get(0).used || bulletArray.get(0).y < 0)){
+      bulletArray.remove(0);
+    }
+
+    //next level of the game
+    if(alienCount == 0){
+      // bonus points when a level is passed
+      score += alienColumns * alienRows * 100;
+
+      //increase the number of aliens in columns by 1and set the max number of columns
+      alienColumns = Math.min(alienColumns + 1, columns/2 - 2);
+      alienRows = Math.min(alienRows + 1, rows - 6 );
+
+      //clear aliens for the next round
+      alienArray.clear();
+
+      //clear bullets
+      bulletArray.clear();
+
+      //mover aliens to the right
+      alienVelocityX = 1;
+
+      //create new aliens
+      createAliens();
     }
   }
   
@@ -191,11 +251,25 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     alienCount = alienArray.size();
   }
 
+  //collission detection function to detect the bullet hitting the aliens
+  //if all conditions are true then there is an overlap
+  public boolean detectCollision(Block a, Block b){
+    return  a.x < b.x + b.width  &&  //checks if the left edge of a is to the left edge of b
+            a.x + a.width > b.x && // checks if the right edge of a is to the right of the left edge of b
+            a.y < b.y + b.height && //checks if the top edge of a is above the bottom edge of b
+            a.y + a.height > b.y; //checks if the bottom edge of a is below top edge of b
+  }
+
   @Override
   public void actionPerformed(ActionEvent e) {
     //update position 
     move();
     repaint();
+
+    //end game completely 
+    if (gameOver){
+      gameLoop.stop();
+    }
   }
 
   @Override
@@ -204,7 +278,20 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
 
   @Override
   public void keyReleased(KeyEvent e) {
-    if (e.getKeyCode() == KeyEvent.VK_LEFT && ship.x -shipVelocityX >= 0) {
+    //allow user to reset the game by any key 
+    if (gameOver){
+      ship.x = shipX;
+      alienArray.clear();
+      bulletArray.clear();
+      score = 0;
+      alienVelocityX = 1;
+      alienColumns = 3;
+      alienRows = 2;
+      gameOver = false;
+      createAliens();
+      gameLoop.start();
+    }
+    else if (e.getKeyCode() == KeyEvent.VK_LEFT && ship.x -shipVelocityX >= 0) {
       ship.x -= shipVelocityX; //move left one tile
     }
     else if (e.getKeyCode() == KeyEvent.VK_RIGHT && ship.x + ship.width + shipVelocityX <= boardwidth ){
